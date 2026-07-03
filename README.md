@@ -1,6 +1,6 @@
 # PPV HLS Proxy App
 
-A native Android app that browses, resolves, and plays live PPV (pay-per-view) HLS streams from ppv.s.. and its mirror domains. Built with Kotlin, Jetpack Compose, ExoPlayer (Media3), and a WebView-driven WASM decryption pipeline. Designed for sideloading on phones, tablets, and Android TV (Leanback) devices.
+A native Android app that browses, resolves, and plays live HLS streams from ppv.s.. and its mirror domains. Built with Kotlin, Jetpack Compose, ExoPlayer (Media3), and a WebView-driven WASM decryption pipeline. Designed for sideloading on phones, tablets, and Android TV (Leanback) devices.
 
 ## Key Features
 
