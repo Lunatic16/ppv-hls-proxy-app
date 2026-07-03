@@ -41,8 +41,8 @@ A native Android app that browses, resolves, and plays live PPV (pay-per-view) H
 ### 1. Clone the Repository
 
 ```bash
-git clone <repo-url>
-cd android
+git clone https://github.com/Lunatic16/ppv-hls-proxy-app.git
+cd ppv-hls-proxy-app
 ```
 
 ### 2. Configure SDK Path
