@@ -12,7 +12,7 @@ A native Android app that browses, resolves, and plays live HLS streams from ppv
 - API failover across ppv.s.., ppv.c.., ppv.t.., ppv.i.., ppv.l..
 - Event status badges: LIVE, SOON, 24/7 (always-live events sorted to bottom)
 - Android TV / Leanback support (declared in manifest, banner/logo configured)
-- Edge-to-edge Material 3 UI with dynamic color (Android 12+)
+- Edge-to-edge Material 3 UI with dynamic color (Android 11+)
 
 ## Tech Stack
 
