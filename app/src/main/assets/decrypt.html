@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Decryption Sandbox</title>
+</head>
+<body>
+  <script type="module">
+    function readVarint(buf, offset) {
+      let value = 0;
+      let shift = 0;
+      let i = offset;
+      while (i < buf.length) {
+        const byte = buf[i++];
+        value |= (byte & 0x7f) << shift;
+        if (!(byte & 0x80)) return { value, next: i };
+        shift += 7;
+      }
+      return { value, next: i };
+    }
+
+    function slugFromFetchBody(body) {
+      const buf = new Uint8Array(body);
+      let i = 0;
+      while (i < buf.length) {
+        const tag = buf[i++];
+        const field = tag >> 3;
+        const wire = tag & 7;
+        if (wire !== 2) break;
+        const { value: len, next } = readVarint(buf, i);
+        i = next;
+        if (i + len > buf.length) break;
+        // Decode slice as UTF-8 string
+        const value = new TextDecoder('utf-8').decode(buf.subarray(i, i + len));
+        i += len;
+        if (field === 2 && value && !value.startsWith('{')) return value;
+      }
+      return null;
+    }
+
+    window.decryptStream = async function(island, bodyBase64, embedPath, embedOrigin, slug) {
+      try {
+        console.log("Starting decryption for path: " + embedPath);
+        
+        // Decode base64 body to Uint8Array
+        const binaryString = atob(bodyBase64);
+        const body = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          body[i] = binaryString.charCodeAt(i);
+        }
+
+        // Determine slug from protobuf body if not explicitly provided
+        if (!slug) {
+          slug = slugFromFetchBody(body);
+          console.log("Extracted slug from fetch body: " + slug);
+        }
+
+        // Mock global player objects that WASM expects
+        const jwEngine = { destroy() {} };
+        const jwPlayer = {
+          remove() { return jwEngine; },
+          setup() {},
+          on() {},
+          load() {},
+          getPlaylistItem: () => ({}),
+          getState: () => 'idle',
+        };
+        
+        window.jwplayer = () => jwPlayer;
+        window.__wasm_jw_player = jwPlayer;
+        window.__wasm_jw_engine = jwEngine;
+        window.__wasm_player = { core: { mediaControl: { volume: 0 } } };
+        window.__wasm_p2p_config = {};
+        window.P2PEngineHls = class {};
+
+        // Stub fetch to return the protobuf handshake body, but allow loading local assets
+        const browserFetch = window.fetch;
+        window.fetch = async (url, init) => {
+          if (typeof url === 'string' && (url.includes('gasm.wasm') || url.includes('gasm.js'))) {
+            return browserFetch(url, init);
+          }
+          console.log("Stub fetch returning handshake body");
+          return new Response(body, {
+            status: 200,
+            headers: { 'content-type': 'application/octet-stream', 'island': island },
+          });
+        };
+
+        // Load the WASM module
+        console.log("Importing gasm.js...");
+        const { default: gasmInit } = await import('./gasm.js');
+        if (typeof gasmInit !== 'function') {
+          throw new Error("gasm.js default export is not a function: " + typeof gasmInit);
+        }
+
+        // Fetch gasm.wasm from current origin (loaded via WebViewAssetLoader)
+        const wasmRes = await fetch("gasm.wasm");
+        const wasmBinary = await wasmRes.arrayBuffer();
+
+        // Instantiate WASM module
+        console.log("Instantiating WASM...");
+        const wasm = await gasmInit({ wasmBinary, module_or_path: wasmBinary });
+
+        // Apply memory patches
+        const u8 = new Uint8Array(wasm.memory.buffer);
+        const dv = new DataView(wasm.memory.buffer);
+        u8[1070512] = 3;
+        u8[1070513] = 1;
+        u8[1070488] = 1;
+        u8[1070508] = 1;
+        dv.setInt32(1070476, -2147483648, true);
+        dv.setInt32(1070472, 0, true);
+        dv.setInt32(1070496, -2147483648, true);
+        dv.setInt32(1070492, 0, true);
+
+        // Run set_stream_jw to trigger decryption
+        const result = wasm.set_stream_jw(island, body);
+        
+        // Race with timeout
+        await Promise.race([
+          result,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
+        ]).catch(() => {});
+
+        // Extract decrypted URL from WASM memory
+        const memBuf = new Uint8Array(wasm.memory.buffer);
+        const text = new TextDecoder('latin1').decode(memBuf);
+
+        const re = /https:\/\/[a-z0-9.-]+\/secure\/[^\x00-\x1f\s"']+?index\.m3u8/g;
+        const matches = [];
+        let match = null;
+        while ((match = re.exec(text)) !== null) {
+          matches.push(match[0]);
+        }
+
+        let streamUrl = null;
+        if (slug) {
+          streamUrl = matches.find((url) => url.includes("/" + slug + "/")) || null;
+        } else {
+          streamUrl = matches.at(-1) || null;
+        }
+
+        if (!streamUrl) {
+          throw new Error("decrypt did not produce m3u8 url");
+        }
+
+        console.log("Decrypted successfully: " + streamUrl);
+        if (window.KotlinBridge) {
+          window.KotlinBridge.onDecrypted(streamUrl);
+        }
+      } catch (err) {
+        console.error("Decryption failed:", err);
+        if (window.KotlinBridge) {
+          window.KotlinBridge.onError(err.message || String(err));
+        }
+      }
+    };
+  </script>
+</body>
+</html>
