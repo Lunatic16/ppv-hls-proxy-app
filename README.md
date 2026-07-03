@@ -9,7 +9,7 @@ A native Android app that browses, resolves, and plays live HLS streams from ppv
 - WASM-based stream decryption via in-app WebView sandbox (gasm.js / gasm.wasm)
 - Local HTTP proxy that rewrites HLS playlists and strips junk from media segments
 - ExoPlayer HLS playback with proxied URLs for CORS-free streaming
-- API failover across ppv.st, ppv.cx, ppv.to, ppv.is, ppv.lc
+- API failover across ppv.s.., ppv.c.., ppv.t.., ppv.i.., ppv.l..
 - Event status badges: LIVE, SOON, 24/7 (always-live events sorted to bottom)
 - Android TV / Leanback support (declared in manifest, banner/logo configured)
 - Edge-to-edge Material 3 UI with dynamic color (Android 12+)
