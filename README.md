@@ -323,8 +323,8 @@ This app is built for sideloading only — no Play Store publication.
 
 This app is part of a family of PPV stream resolver clients:
 
-- **ppv_picker** — CLI Python script (original)
-- **ppv-hls-proxy** — Web frontend + Node backend (full proxy server)
+- [ppv_picker](https://github.com/Lunatic16/ppv-picker) — CLI Python script (original)
+- [ppv-hls-proxy](https://github.com/Lunatic16/ppv-hls-proxy) — Web frontend + Node backend (full proxy server)
 
 ## License
 
